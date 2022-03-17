@@ -1,0 +1,2 @@
+slang.init()
+slang.reset()
