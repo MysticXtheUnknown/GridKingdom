@@ -29,6 +29,7 @@ resources.lumber = 0
 current_submap_outgoing = {}
 
 current_submap_resources = {} --FOR DISPLAY ONLY, NOT GAME DATA
+
 current_submap_resources.wood = 0
 current_submap_resources.food = 0 --these are per turn values incoming
 current_submap_resources.gold = 0
@@ -598,7 +599,7 @@ current_map[spoty][spotx]["player_building"] = kind
 end
 
 function playerRemoveBuilding(spoty,spotx)
-
+if not current_map[spoty][spotx]["player_building"] then return end --no building to deconstruct.
 	for k,v in pairs(current_map[spoty][spotx]["player_building"]["cost"]) do
 	stockpile[k] = stockpile[k] + v --reimburse materials
 	end
@@ -723,22 +724,44 @@ return sec
 end
 
 function floorSubmapStockpile()
+
 for k,v in pairs(current_submap_resources) do
 current_submap_resources[k] = math.floor(v)
 end
+
 end
 
 function calculateSubmapStockpile(command)
 
 for k,v in pairs(resources) do --reset incoming/outgoing
 current_submap_resources[k] = 0
-current_submap_outgoing[k] = 0
+current_submap_outgoing[k] = 0 
 end
+
+--ADD resources to the display data from the village at the map point
+	local current_map_square = content.map[map_pos_y][map_pos_x]
+	if current_map_square["player_building"] and current_map_square["player_building"]["generates"] 
+	then
+			for k,v in pairs(current_map_square["player_building"]["generates"]) do
+			--	current_submap_resources[k] = current_submap_resources[k] or 0
+				current_submap_resources[k] = current_submap_resources[k] + v
+			end
+			for k,v in pairs(current_map_square["player_building"]["drains"]) do
+				current_submap_outgoing[k] = current_submap_outgoing[k] + v
+			end
+			
+			
+	end
+
+--start iteration over the map
 
 for y = 0,map_size_y,1 do
 for x = 0,map_size_x,1 do
 
 if content.map[y][x]["already_generated"] then --found a submap
+
+	
+
 
 for y2 = 0,submap_size_y,1 do
 for x2 = 0,submap_size_x,1 do
@@ -774,7 +797,7 @@ local security = 0
 					end
 				end
 			end
-			
+			--uses v:
 			local modifier = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
 		
 			if command ~= "for_display" then
@@ -783,32 +806,40 @@ local security = 0
 			
 			--only add for my x and y position on zoom 0 main map.
 			
-			if (y == player_y and x == player_x and zoom_level == 0) or (zoom_level == 1) then
+			if (y == player_y and x == player_x and zoom_level == 0) or (zoom_level == 1 and y == map_pos_y and x == map_pos_x) then
 				current_submap_resources[k] = current_submap_resources[k] + modifier --just for display
 			end
 			
 			end --ends  k,v in generates
 		end --ends if building[generates
 		
-	if building["drains"] then
-		for k,v in pairs(building["drains"]) do
-			if command ~= "for_display" then
-				outgoing[k] = outgoing[k] or 0
-				outgoing[k] = outgoing[k] + v
+		if building["drains"] then
+			for k3,v3 in pairs(building["drains"]) do
+				if command ~= "for_display" then
+					outgoing[k3] = outgoing[k3] or 0
+					outgoing[k3] = outgoing[k3] + v3
 				end
-				current_submap_outgoing[k] = current_submap_outgoing[k] or 0
-				current_submap_outgoing[k] = current_submap_outgoing[k] + v
-			
+
+				if (zoom_level == 0 and x == player_x and y == player_y) or (zoom_level == 1 and y == map_pos_y and x == map_pos_x) then
+				current_submap_outgoing[k3] = current_submap_outgoing[k3] + v3
+				end
+			end
 		end
-	end
---comment
-end --ends if building
+	
+	
+
+	--comment
+	end --ends if building
+
 
 end end --ends inner loop
 
 end --ends if 'alraedy generated' 
 
 end end --ends the iteration over the map
+
+
+
 
 floorSubmapStockpile() --floors out the current_submap_resources display values
 
@@ -872,7 +903,6 @@ local security = getSecurity() --first, check security.   Security gives a perce
 for k,v in pairs(resources) do --reset incoming/outgoing
 resources[k] = 0
 outgoing[k] = 0
-current_submap_resources[k] = 0
 end
 
 --iterate over the map, calculating generated and consumed resources.
@@ -1006,7 +1036,7 @@ end
 
 function erasePlayer(y,x)
 
-if not current_map[y][x] then  --outside of map 
+if not current_map[y] or not current_map[y][x] then  --outside of map 
 slang.gotorc(y,x)
 slang.writechar(" ")
 
@@ -1047,12 +1077,21 @@ player_y = player_y + changeY
 player_x = bounds(player_x,0,map_size_x)
 player_y = bounds(player_y,0,map_size_y)
 showPlayer()
-calculateSubmapStockpile("for_display")
+
+if zoom_level == 0 then
+map_pos_x = player_x
+map_pos_y = player_y
 end
+
+end --ends function
 
 
 function playerZoom(y,x,map_data)
+
+
 --zoom in
+
+
 if zoom_level == 0 
 and content.map[player_y][player_x]["player_building"]
 and content.map[player_y][player_x]["player_building"]["is_civilization"]
@@ -1074,8 +1113,18 @@ end
 
 --zoom out
 if zoom_level == 1 then -- we are zoomed in currently so zoom out
+
+--first, nil out the old data
+--for k,v in pairs(resources) do
+--current_submap_resources[k] = 0
+--current_submap_outgoing[k] = 0
+--end
 current_map = content.map
 zoom_level = 0
+
+player_x = map_pos_x
+player_y = map_pos_y --reset the cursor to the overmaps last position.
+
 showMap()
 showSpecial()
 showBuildings()
@@ -1151,6 +1200,8 @@ end
 
 day = day + 1
 
+calculateSubmapStockpile("for_display") -- each day
+
 showIncomes() --show incomes and stockpile
 
 	if key == "mouse" then
@@ -1170,6 +1221,11 @@ end
 
 --PRIMARY CODE:
 --START:
+
+
+--turn off flashing cursor
+slang.showcursor(false)
+
 dofile("mods/modlist.lua") --LOAD MODS AFTER ALL OTHER CODE IS DEFINED EXCEPT MAIN LOOP
 
 
@@ -1179,11 +1235,15 @@ generateMap(map_size_y,map_size_x)
 current_map= content.map
 
 zoom_level = 0 --start on world map, zoom level 0
+
+map_pos_x = player_x
+map_pos_y = player_y
+
 showMap();
 showSpecial()
 showBuildings()
 showPlayer()
-
+slang.refresh()
 --MAIN LOOP:
 
 while(true) do
