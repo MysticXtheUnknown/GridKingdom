@@ -5,7 +5,6 @@
 --Nomad villages cost gold but give want_civ resource bonuses to nearby buildings?
 --Settlers - pathfind to verdant?
 
-
 slang.init()
 slang.mousemode(1,1)  --TO MAKE THE MOUSE WORK: RIGHT CLICK ON TERMINAL> CLICK DEFAULT > REMOVE QUICK_EDIT FROM OPTIONS.
 slang.clear()
@@ -1171,6 +1170,8 @@ end
 
 --PRIMARY CODE:
 --START:
+dofile("mods/modlist.lua") --LOAD MODS AFTER ALL OTHER CODE IS DEFINED EXCEPT MAIN LOOP
+
 
 preStart() --DEFINES MAP SIZE X AND Y
 --GEN AND SHOW MAP:
