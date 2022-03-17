@@ -609,11 +609,15 @@ end
 
 function player_build(spoty,spotx)
 
+local line_data = {}
+
 	local line = 0
 
 		for k,v in pairs(data.buildable) do
 		local meant_for_zoom = data.buildable[k]["kingdom_zoom"]
 			if (not meant_for_zoom) or (meant_for_zoom and meant_for_zoom == zoom_level) then
+				--save the entry to the line data
+				line_data[line] = data.buildable[k]
 				message(line,0,data.buildable[k]["shortcut"]..") "..data.buildable[k]["name"])
 				line = line+1
 			else
@@ -622,7 +626,18 @@ function player_build(spoty,spotx)
 		end 
 	
 	
-	local key = getKey()
+	local key, b, x, y = getKey()
+	
+	if key == "mouse" then --mouse click, see if its on a menu entry
+		for k,v in pairs(line_data) do --go over the lines, see which one matches the click
+			if k == y then --you clicked on a line
+			playerAddBuilding(line_data[k],spoty,spotx)
+			refresh_display()
+			return
+			
+			end
+		end
+	end
 	
 	if key == "e" then --pressed 'remove building'
 	playerRemoveBuilding(spoty,spotx)
@@ -1145,10 +1160,59 @@ function printSlangLibraryNames()
 	getKey()
 end
 
+function singleClick(y,x)
+local line = 0
+
+local building = current_map[y][x]["player_building"]
+if not building then return end
+
+for k,v in pairs(building) do
+setColor("white")
+if type(v) == "number" or type(v) == "string" then
+slang.gotorc(line,0)
+slang.writestring(k.." = "..v)
+line = line + 1
+end
+if k == "generates" then
+	for k2, v2 in pairs (building["generates"]) do
+	slang.gotorc(line,0)
+	slang.writestring("Generates "..v2.." "..k2)
+	line = line + 1
+	end
+end
+if k == "drains" then
+	for k2,v2 in pairs(building["drains"]) do
+	slang.gotorc(line,0)
+	slang.writestring("Drains "..v2.." "..k2)
+	line = line + 1
+	end
+end
+
+end
+slang.refresh()
+getKey()
+refresh_display()
+
+
+end
+
+
+function refresh_display()
+slang.clear()
+showMap();
+showSpecial()
+showBuildings()
+showPlayer()
+calculateSubmapStockpile("for_display")
+showIncomes()
+slang.refresh()
+end
+
+
 function main()
 local b
-local x
-local y
+local x = 0
+local y = 0
 
 local key, b, x, y = getKey();
 
@@ -1174,6 +1238,22 @@ if key == "0" then
 	slang.refresh()
 	getKey()
 end
+	if key == "mouse" and last_mouse ~= "mouse" then
+	--single click
+
+	singleClick(y,x);
+	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then
+	key = "blank"
+	slang.gotorc(y,x)
+	slang.writestring("?")
+	player_build(y,x)
+	
+	--slang.gotorc(y,x)
+--	slang.writestring("Mouse!")
+--	slang.refresh()
+--	getKey();
+	end
+	
 
 if key == "9" then --rerun the prestart to define map x and y size.
 	preStart()
@@ -1204,18 +1284,11 @@ calculateSubmapStockpile("for_display") -- each day
 
 showIncomes() --show incomes and stockpile
 
-	if key == "mouse" then
-	slang.gotorc(y,x)
-	slang.writestring("?")
-	player_build(y,x)
-	
-	--slang.gotorc(y,x)
---	slang.writestring("Mouse!")
---	slang.refresh()
---	getKey();
-	end
-
 slang.refresh();
+
+last_mouse = key
+last_mouse_x = x
+last_mouse_y = y
 
 end
 
