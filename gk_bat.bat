@@ -1,3 +1,3 @@
-s gk.lua
-s reset.lua
+slang gk.lua
+slang reset.lua
 pause
