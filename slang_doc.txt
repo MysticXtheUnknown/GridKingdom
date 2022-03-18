@@ -1,0 +1,57 @@
+Documentation for simple Lua bindings to Slang i/o library.
+ 
+ 
+slang.init()
+initialize slang i/o library, sets up the terminal.  no options.
+ 
+slang.reset()
+ends slang processing, closes the terminal.
+ 
+slang.mousemode(mode, force)
+enables mouse input.  this is undocumented in slang.  presumably mode=1, force=1.
+when a mouse button is clicked in the terminal, slang.getinput() will return "mouse", buttonmode, x, y.
+buttonmode is 0/1/2 for left/middle/right mouse buttons. x,y are the terminal column,row.
+ 
+slang.getinput(wait)
+get key/mouse input.  returns -1 if no input is waiting.
+takes wait time paramater, 1/10's of a second to wait before returning if no input is available.
+wait time defaults to 0.
+ 
+slang.dimensions()
+returns terminal size in rows,columns (y,x).
+ 
+slang.gotorc(row,column)
+position cursor at row,column.
+ 
+slang.getrc(row,column)
+get cursor position: r,c
+ 
+slang.setcolor(c)
+set output color to c = fg+bg*16
+color indices already setup
+use getcolor(colorForeground,colorBackground) with color names to get a code to pass to setcolor.
+ 
+slang.writechar(c)
+output a character at the cursor position.  advances the cursor position by one column.
+argument is the character's integer ascii code or first character of a string.
+eg: writechar(32), or writechar(' '), or writechar('Hello') - outputs only the H
+ 
+slang.writestring(s)
+output a string at the cursor position, and advances the cursor position to the end of the string.
+no escape codes are processed (newline, tab, etc).
+ 
+slang.refresh()
+update the physical terminal display to match the virtual display buffer.
+ 
+slang.clear()
+clears the terminal using the current color.
+ 
+slang.resize()
+reinitializes the terminal to update dimensions if it has been changed.
+call this manually when you resize the terminal window, then call slang.dimensions() to get the new size.
+ 
+slang.showcursor(visibility)
+enables or disables the visual terminal cursor.
+ 
+slang.flushinput()
+removes all pending input.
