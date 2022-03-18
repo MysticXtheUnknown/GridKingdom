@@ -842,7 +842,7 @@ penalty,near_bonus,effectiveness = stockpileDetailSubmap(y2,x2,content.map[y][x]
 
 local building = content.map[y][x][y2][x2]["player_building"]
 if building then --found a player building, calculate drains and generates
-
+		building["adjusted_resources"] = {}
 		if building["generates"] then
 			for k,v in pairs(building["generates"]) do
 			
@@ -854,7 +854,11 @@ if building then --found a player building, calculate drains and generates
 		
 			--uses v:
 			local modifier = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
-		
+			building["adjusted_resources"] = building["adjusted_resources"] or {} --for display only
+			local adj_ob = building["adjusted_resources"]
+			adj_ob[k] = adj_ob[k] or 0
+			adj_ob[k] = adj_ob[k] + modifier
+
 			if command ~= "for_display" then
 			resources[k] = resources[k] + modifier --actual resource math, not for just display.
 			end
@@ -986,7 +990,8 @@ local distance, nearx,neary
 		if nearx == 0 and neary == 0 and distance == 100000 then near_bonus = 1 else
 		
 		
-		near_bonus = content.map[neary][nearx]["player_building"]["nearby_bonus"] end
+		near_bonus = content.map[neary][nearx]["player_building"]["nearby_bonus"]
+	    end
 		
 		
 		effectiveness = 1 / distance
@@ -1013,9 +1018,20 @@ for k,v in pairs(building["generates"]) do
 			end
 		end
 	end
-		
-
-	resources[k] = resources[k] + ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
+	
+	--save the adjusted value in the building	
+	
+	local amount_to_add = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
+	
+	building["adjusted_resources"] = building["adjusted_resources"] or {} --for display only
+	local adj_ob = building["adjusted_resources"]
+	adj_ob[k] = adj_ob[k] or 0
+	
+	adj_ob[k] = adj_ob[k] + amount_to_add
+	
+	--save the incoming resource amount to game engine data (not just display)
+	
+	resources[k] = resources[k] + amount_to_add
 
 end
 end
@@ -1031,7 +1047,7 @@ end
 
 end
 
-end end
+end end --end for x, for y
 	
 
 end
@@ -1094,10 +1110,10 @@ end
 function erasePlayer(y,x)
 
 if not current_map[y] or not current_map[y][x] then  --outside of map 
-slang.gotorc(y,x)
-slang.writechar(" ")
-
-return end
+	slang.gotorc(y,x)
+	slang.writechar(" ")
+	return 
+end
 
  -- sanity
 local tile = current_map[y][x]["tile"]
@@ -1113,7 +1129,6 @@ print("special tile")
 slang.gotorc(y,x)
 setColor(special_tile["col"])
 slang.writechar(special_tile["sym"])
-
 end
 
 local building = current_map[y][x]["player_building"]
@@ -1123,7 +1138,7 @@ setColor(building["col"])
 slang.writechar(building["sym"])
 end
 
-end
+end --ends function
 
 function playerMove(changeY,changeX)
 erasePlayer(player_y,player_x)
@@ -1150,8 +1165,8 @@ function playerZoom(y,x,map_data)
 
 
 if zoom_level == 0 
-and content.map[player_y][player_x]["player_building"]
-and content.map[player_y][player_x]["player_building"]["is_civilization"]
+and content.map[y][x]["player_building"]
+and content.map[y][x]["player_building"]["is_civilization"]
 then
 
 	if not content.map[y][x]["already_generated"] then
@@ -1229,6 +1244,14 @@ if k == "drains" then
 	end
 end
 
+if k == "adjusted_resources" then --building has adjusted resources.
+	for k2,v2 in pairs(building["adjusted_resources"]) do
+		slang.gotorc(line,0)
+		slang.writestring("Adjusted Income: "..v2.." "..k2)
+		line = line + 1
+	end 
+end
+
 return line
 end
 
@@ -1283,11 +1306,12 @@ end
 
 
 function main()
-local b
-local x = 0
-local y = 0
+local key
+local x
+local y
+local mbutton
 
-local key, mbutton, x, y = getKey();
+key, mbutton, x, y = getKey();
 
 if key == "b" then player_build(player_y,player_x) end
 
@@ -1327,8 +1351,8 @@ if key == "z" then playerZoom(player_y,player_x,content.map[player_y][player_x])
 --	slang.writestring("Mouse!")
 --	slang.refresh()
 --	getKey();
-	end
-	if key == "mouse" and mbutton == 1 then --middle click
+	elseif key == "mouse" and mbutton == 1 then --middle click
+
 	playerZoom(y,x,content.map[y][x])
 	end
 
