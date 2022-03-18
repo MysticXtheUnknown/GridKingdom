@@ -92,9 +92,9 @@ end
 data = {}
 data.maptiles = {}
 data.maptiles[1] = { --swamp
-["name"] = "swamp",
-["sym"] = "%",
-["col"] = "brown"
+name = "swamp",
+sym = "%",
+col = "brown"
 }
 data.maptiles[2] = { --forest
 ["name"] = "forest",
@@ -424,8 +424,14 @@ end
 return count
 end
 
+function copyObject(a,b)
+for k,v in pairs(b) do
+a[k] = v
+end
+end
+
 function set_inherit(a,b)
-	setmetatable(a,{__index = b})
+	setmetatable(a,{["__index"] = b})
 end
 
 function generateMap(mapy,mapx,villagey,villagex)
@@ -442,7 +448,10 @@ local r_num = math.random(1,num_kinds) --this table starts at one...
 content.map[y][x]["land_tile_kind"] = r_num
 
 content.map[y][x]["tile"] = {}
+
 set_inherit(content.map[y][x]["tile"],data.maptiles[r_num])
+
+copyObject(content.map[y][x]["tile"],data.maptiles[r_num])
 
 
 if math.random(1,20) == 1 then
@@ -479,7 +488,7 @@ spot["land_tile_kind"] = r_num
 
 spot["tile"] = {}
 set_inherit(spot["tile"],data.maptiles[r_num])
-
+copyObject(spot["tile"],data.maptiles[r_num])
 end end
 
 end
@@ -627,7 +636,8 @@ for k,v in pairs(kind["cost"]) do --first, see if i have all ingredients.  For n
 stockpile[k] = stockpile[k] - v
 end 
 
-current_map[spoty][spotx]["player_building"] = kind
+current_map[spoty][spotx]["player_building"] = {}
+copyObject(current_map[spoty][spotx]["player_building"],kind)
 end
 
 function playerRemoveBuilding(spoty,spotx)
@@ -1192,14 +1202,12 @@ function printSlangLibraryNames()
 	getKey()
 end
 
-function singleClick(y,x)
-local line = 0
 
-if not current_map[y] or not current_map[y][x] or not current_map[y][x]["player_building"] then return end --outside of map.
-local building = current_map[y][x]["player_building"]
-if not building then return end
+function singleClick(y,x) --right single click
+displayEntityInfo(y,x)
+end
 
-for k,v in pairs(building) do
+function displayInfoForOneEntity(k,v,line,building)
 setColor("white")
 if type(v) == "number" or type(v) == "string" then
 slang.gotorc(line,0)
@@ -1208,20 +1216,52 @@ line = line + 1
 end
 if k == "generates" then
 	for k2, v2 in pairs (building["generates"]) do
-	slang.gotorc(line,0)
-	slang.writestring("Generates "..v2.." "..k2)
-	line = line + 1
+		slang.gotorc(line,0)
+		slang.writestring("Generates "..v2.." "..k2)
+		line = line + 1
 	end
 end
 if k == "drains" then
 	for k2,v2 in pairs(building["drains"]) do
-	slang.gotorc(line,0)
-	slang.writestring("Drains "..v2.." "..k2)
-	line = line + 1
+		slang.gotorc(line,0)
+		slang.writestring("Drains "..v2.." "..k2)
+		line = line + 1
 	end
 end
 
+return line
 end
+
+function displayEntityInfo(y,x)
+
+local line = 0
+local building = false
+
+if not current_map[y] or not current_map[y][x] then return end --outside of map.
+
+
+--if current_map[y][x]["player_building"] then
+--building = current_map[y][x]["player_building"]
+--end
+
+--if current_map[y][x]["tile"] then
+local building = current_map[y][x]["player_building"]
+--tile_kind = current_map[y][x]["land_tile_kind"]
+local tile = current_map[y][x]["tile"]
+--end
+
+if building then
+for k,v in pairs(building) do
+line = displayInfoForOneEntity(k,v,line,building)
+end
+end
+
+if tile then
+for k,v in pairs(tile) do
+line = displayInfoForOneEntity(k,v,line,tile)
+end
+end
+
 slang.refresh()
 getKey()
 refresh_display()
@@ -1272,8 +1312,8 @@ if key == "z" then playerZoom(player_y,player_x,content.map[player_y][player_x])
 	getKey()
 	end
 	
-	if key == "mouse" and last_mouse ~= "mouse" and  mbutton == 2 then
-	--single click
+	if key == "mouse" and  mbutton == 2 then
+	--single click r click
 
 	singleClick(y,x);
 --	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then double click
