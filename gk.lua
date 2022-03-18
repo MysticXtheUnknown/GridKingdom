@@ -25,6 +25,7 @@ resources.iron = 0
 resources.steel = 0
 resources.population = 0
 resources.lumber = 0
+resources["cut stone"] = 0
 
 current_submap_outgoing = {}
 
@@ -40,6 +41,7 @@ current_submap_resources.iron = 0
 current_submap_resources.steel = 0
 current_submap_resources.population = 0
 current_submap_resources.lumber = 0
+current_submap_resources["cut stone"] = 0
 
 stockpile = {} --actual stockpile
 stockpile.wood = 1000
@@ -53,6 +55,7 @@ stockpile.steel = 0
 stockpile.population = 0
 stockpile.lumber = 0
 stockpile.lumber = 1000 --DEBUG
+stockpile["cut stone"] = 0
 
 outgoing = {} --outgoing
 outgoing.food = 0
@@ -65,6 +68,7 @@ outgoing.iron = 0
 outgoing.steel = 0
 outgoing.population = 0
 outgoing.lumber = 0
+outgoing["cut stone"] = 0
 
 map_size_y = 50
 map_size_x = 50
@@ -173,7 +177,7 @@ desc="Generates some food and wood",
 sym = "F",
 col = "yellow",
 shortcut="F",
-want_civ = true, --10 to any village, town, or city
+want_civ = "is_civilization", --10 to any village, town, or city
 generates = { wood = 10,food = 10 },
 drains = { gold = 2 },
 requires_tile = "forest",
@@ -188,7 +192,7 @@ desc="Generates some stone",
 sym = "Q",
 col = "yellow",
 shortcut="q",
-want_civ = true, --10 to any village, town, or city
+want_civ = "is_civilization", --10 to any village, town, or city
 generates = { stone = 10 },
 drains = { gold = 5 },
 requires_tile = "mountain",
@@ -203,7 +207,7 @@ desc="Generates some minerals",
 sym = "M",
 col = "yellow",
 shortcut="m",
-want_civ = true, --10 to any village, town, or city
+want_civ = "is_civilization", --10 to any village, town, or city
 generates = { minerals = 10 },
 drains = { gold = 5 },
 requires_tile = "mountain",
@@ -218,8 +222,21 @@ desc="turns wood into lumber",
 sym = "L",
 col = "blue",
 shortcut="L",
-want_civ = true, --10 to any village, town, or city
+want_civ = "is_civilization", --10 to any village, town, or city
 generates = { lumber = 10 },
+drains = { gold = 5, wood = 10 },
+cost = { wood = 100 },
+kingdom_zoom = 1
+}
+
+data.buildable["Stonecutter"] = {
+name = "Stone Cutter",
+desc="turns stone into cut stone",
+sym = "L",
+col = "blue",
+shortcut="l",
+want_civ = "is_civilization", --10 to any village, town, or city
+generates = { ["cut stone"] = 10 },
 drains = { gold = 5, wood = 10 },
 cost = { wood = 100 },
 kingdom_zoom = 1
@@ -233,7 +250,7 @@ col = "yellow",
 shortcut="f",
 requires_tile = "meadow",
 tile_penalty = 0.25,
-want_civ = true,
+want_civ = "is_civilization",
 generates = { food = 50 },
 drains = { gold = 1 },
 cost = { wood = 100 },
@@ -245,10 +262,10 @@ name = "Smelter",
 desc="A bloomery for production of iron",
 sym = "B",
 col = "blue",
-shortcut="b",
+shortcut="x",
 --requires_tile = "meadow",
 --tile_penalty = 0.25,
-want_civ = true, 
+want_civ = "is_civilization",
 generates = { iron = 10 },
 drains = { gold = 1, minerals = 20 },
 cost = { lumber = 100 },
@@ -263,7 +280,7 @@ col = 45,
 shortcut="s",
 --requires_tile = "meadow",
 --tile_penalty = 0.25,
-want_civ = true, 
+want_civ = "is_civilization" ,
 generates = { steel = 10 },
 drains = { gold = 1, minerals = 20 },
 cost = { lumber = 100 },
@@ -291,16 +308,16 @@ desc="provides gold",
 sym = "+",
 col = "yellow",
 shortcut="h",
-want_civ = true,
-generates = { gold = 1, population = 10 },
-drains = { food = 1 },
+want_civ = "is_market",
+generates = { gold = 5, population = 10 },
+drains = { food = 5 },
 cost = { wood = 10 },
 kingdom_zoom = 1
 }
 
-data.buildable["Market"] = {
-name = "Stockpile or Market",
-desc="place near farms, quarries etc",
+data.buildable["Stockpile"] = {
+name = "Stockpile",
+desc="place near farms, quarries, smelters, foresters, etc",
 sym = "X",
 col = "yellow",
 shortcut="B",
@@ -310,6 +327,21 @@ drains = { gold = 2 },
 nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
 kingdom_zoom = 1
 }
+
+data.buildable["Market"] = {
+name = "Market",
+desc="place near houses",
+sym = "X",
+col = "yellow",
+shortcut="b",
+is_market = true,
+cost = { wood = 10, stone = 10, gold = 10},
+drains = { gold = 2 },
+nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
+kingdom_zoom = 1
+}
+
+
 
 data.buildable["Town"] = {
 name = "Town",
@@ -588,7 +620,7 @@ function playerAddBuilding(kind,spoty,spotx)
 if not current_map[spoty][spotx] then return end --outside of map
 
 for k,v in pairs(kind["cost"]) do --check if i have enough resources in my stockpile.
-if stockpile[k] < v then return end
+if stockpile[k] < v and v ~= 0 then return end --0 cost, dont care.
 end
 
 for k,v in pairs(kind["cost"]) do --first, see if i have all ingredients.  For now, just spend it
@@ -633,6 +665,7 @@ local line_data = {}
 			if k == y then --you clicked on a line
 			playerAddBuilding(line_data[k],spoty,spotx)
 			refresh_display()
+			
 			return
 			
 			end
@@ -650,9 +683,7 @@ local line_data = {}
 	for k,v in pairs(data.buildable) do --build a building key
 		if data.buildable[k]["shortcut"] == key and ( not data.buildable.kingdom_zoom or (data.buildable.kingdom_zoom == zoom_level )) then
 			playerAddBuilding(data.buildable[k],spoty,spotx)
-			showMap()
-			showSpecial()
-			showBuildings()
+			refresh_display()
 			return
 		end
 	end
@@ -668,7 +699,7 @@ end --ends function
 
 
 
-function calc_distance_to_nearest(tile,startY,startX,map_data,mapy,mapx) --mapy and x are the map sizes
+function calc_distance_to_nearest(tile,startY,startX,map_data,mapy,mapx,key) --mapy and x are the map sizes
 
 local best_distance = 100000 --impossible number
 
@@ -680,7 +711,7 @@ for x = 0,mapx,1 do
 
 if map_data[y][x] then
 local tileb = map_data[y][x]["player_building"]
-if tileb and map_data[y][x]["player_building"]["is_civilization"] then
+if tileb and map_data[y][x]["player_building"][key] then
 --found a city etc, calculate the distance.
 local changeX = math.abs(startX - x)
 local changeY = math.abs(startY - y);
@@ -778,32 +809,16 @@ if content.map[y][x]["already_generated"] then --found a submap
 	
 
 
-for y2 = 0,submap_size_y,1 do
+for y2 = 0,submap_size_y,1 do --iterate over submap
 for x2 = 0,submap_size_x,1 do
 
-
-
-local special = content.map[y][x][y2][x2]["special"]
-
-
-local building = content.map[y][x][y2][x2]["player_building"]
-if building then --found a player building, calculate drains and generates
-
-
 local penalty = 1 --for wrong tile
-local near_bonus = 0 -- for 'want civ'
+local near_bonus = 1 -- for 'want civ'
 local effectiveness = 1 -- for want_civ
 local special_bonus = 1 -- for special map additions like fertile tiles.
 local security = 0
 
-		if building["generates"] then
-			for k,v in pairs(building["generates"]) do
-			
-			resources[k] = resources[k] or 0 --sanity
-			current_submap_resources[k] = current_submap_resources[k] or 0
-			
-			penalty,near_bonus,effectiveness = stockpileDetailSubmap(y2,x2,content.map[y][x])
-			
+local special = content.map[y][x][y2][x2]["special"] --grab special bonus
 			if special then
 	
 				for k2,v2 in pairs (special["bonus"]) do
@@ -812,6 +827,21 @@ local security = 0
 					end
 				end
 			end
+
+penalty,near_bonus,effectiveness = stockpileDetailSubmap(y2,x2,content.map[y][x])
+
+local building = content.map[y][x][y2][x2]["player_building"]
+if building then --found a player building, calculate drains and generates
+
+		if building["generates"] then
+			for k,v in pairs(building["generates"]) do
+			
+			resources[k] = resources[k] or 0 --sanity
+			current_submap_resources[k] = current_submap_resources[k] or 0
+			
+		--	penalty,near_bonus,effectiveness = stockpileDetailSubmap(y2,x2,content.map[y][x])
+			
+		
 			--uses v:
 			local modifier = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
 		
@@ -828,15 +858,16 @@ local security = 0
 			end --ends  k,v in generates
 		end --ends if building[generates
 		
-		if building["drains"] then
+		if building["drains"] then --drain resources
 			for k3,v3 in pairs(building["drains"]) do
+			local add_amount = v3 * near_bonus
 				if command ~= "for_display" then
 					outgoing[k3] = outgoing[k3] or 0
-					outgoing[k3] = outgoing[k3] + v3
+					outgoing[k3] = outgoing[k3] + (add_amount)
 				end
 
 				if (zoom_level == 0 and x == player_x and y == player_y) or (zoom_level == 1 and y == map_pos_y and x == map_pos_x) then
-				current_submap_outgoing[k3] = current_submap_outgoing[k3] + v3
+				current_submap_outgoing[k3] = current_submap_outgoing[k3] + add_amount
 				end
 			end
 		end
@@ -890,7 +921,8 @@ if  map_data[y][x]["player_building"] and map_data[y][x]["player_building"]["req
 	end
 	
 	if map_data[y][x]["player_building"] and map_data[y][x]["player_building"]["want_civ"] then
-		distance, neary,nearx = calc_distance_to_nearest(tile,y,x,map_data,submap_size_y,submap_size_x)
+	local civ_kind  = map_data[y][x]["player_building"]["want_civ"]
+		distance, neary,nearx = calc_distance_to_nearest(tile,y,x,map_data,submap_size_y,submap_size_x,civ_kind)
 		if (nearx == 0 and neary == 0) or distance == 100000 then near_bonus = 0.1 else
 		
 		
@@ -1163,6 +1195,7 @@ end
 function singleClick(y,x)
 local line = 0
 
+if not current_map[y] or not current_map[y][x] or not current_map[y][x]["player_building"] then return end --outside of map.
 local building = current_map[y][x]["player_building"]
 if not building then return end
 
