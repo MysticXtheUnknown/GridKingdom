@@ -1168,6 +1168,9 @@ if zoom_level == 0
 and content.map[y][x]["player_building"]
 and content.map[y][x]["player_building"]["is_civilization"]
 then
+map_pos_x = x
+map_pos_y = y
+
 
 	if not content.map[y][x]["already_generated"] then
 		generateSubmap(y,x,submap_size_y,submap_size_x) 
