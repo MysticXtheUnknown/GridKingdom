@@ -17,3 +17,6 @@ Moddable.
 The game:
 It's an economy game, so buildings drain resources as well as produce them.  press 'b' and start a village .  move onto the village and press 'z'.  Now we see the village submap.  press b and throw some buildings down.  On the right, the very first number is the submap production/consumption.  The second number is global production and consumption.  The final number is the amount in stock.
 
+houses need to be near markets,
+most industry needs to be near a stockpile.
+the farther away they are, the less goods they produce and consume.
