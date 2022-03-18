@@ -232,8 +232,8 @@ kingdom_zoom = 1
 data.buildable["Stonecutter"] = {
 name = "Stone Cutter",
 desc="turns stone into cut stone",
-sym = "L",
-col = "blue",
+sym = "c",
+col = "white",
 shortcut="l",
 want_civ = "is_civilization", --10 to any village, town, or city
 generates = { ["cut stone"] = 10 },
@@ -1247,7 +1247,7 @@ local b
 local x = 0
 local y = 0
 
-local key, b, x, y = getKey();
+local key, mbutton, x, y = getKey();
 
 if key == "b" then player_build(player_y,player_x) end
 
@@ -1259,7 +1259,7 @@ if key == "d" then playerMove(0,1) end
 if key == "s" then playerMove(1,0) end
 if key == "z" then playerZoom(player_y,player_x,content.map[player_y][player_x]) end
 
-if key == "0" then
+	if key == "0" then
 	printSlangLibraryNames()
 	--list slang libraries
 	local line = 0
@@ -1270,12 +1270,14 @@ if key == "0" then
 	end
 	slang.refresh()
 	getKey()
-end
-	if key == "mouse" and last_mouse ~= "mouse" then
+	end
+	
+	if key == "mouse" and last_mouse ~= "mouse" and  mbutton == 2 then
 	--single click
 
 	singleClick(y,x);
-	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then
+--	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then double click
+	elseif key == "mouse" and mbutton == 0 then
 	key = "blank"
 	slang.gotorc(y,x)
 	slang.writestring("?")
