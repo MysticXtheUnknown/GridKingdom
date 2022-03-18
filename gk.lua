@@ -1271,7 +1271,7 @@ end
 
 
 function refresh_display()
-slang.clear()
+--slang.clear()
 showMap();
 showSpecial()
 showBuildings()
@@ -1312,13 +1312,13 @@ if key == "z" then playerZoom(player_y,player_x,content.map[player_y][player_x])
 	getKey()
 	end
 	
-	if key == "mouse" and  mbutton == 2 then
+	if key == "mouse" and  mbutton == 2 then --right button, display entity info (buildings, tiles)
 	--single click r click
 
 	singleClick(y,x);
---	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then double click
-	elseif key == "mouse" and mbutton == 0 then
-	key = "blank"
+--	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then --double click
+	elseif key == "mouse" and mbutton == 0 then --left click bring up build menu
+--	key = "blank"
 	slang.gotorc(y,x)
 	slang.writestring("?")
 	player_build(y,x)
@@ -1328,7 +1328,9 @@ if key == "z" then playerZoom(player_y,player_x,content.map[player_y][player_x])
 --	slang.refresh()
 --	getKey();
 	end
-	
+	if key == "mouse" and mbutton == 1 then --middle click
+	playerZoom(y,x,content.map[y][x])
+	end
 
 if key == "9" then --rerun the prestart to define map x and y size.
 	preStart()
