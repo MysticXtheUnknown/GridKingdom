@@ -1,4 +1,4 @@
-data.maptiles[6] = {
+data.maptiles["unique_name"] = {
 ["name"] = "desert",
 ["sym"] = "=",
 ["col"] = "gray"
