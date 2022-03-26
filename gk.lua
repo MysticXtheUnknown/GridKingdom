@@ -14,6 +14,8 @@ player_y = 10 --start points
 
 day = 0
 
+dofile("code/russastar2d.lua")
+
 resources = {}
 resources.wood = 0
 resources.food = 0 --these are per turn values incoming
@@ -44,10 +46,10 @@ current_submap_resources.lumber = 0
 current_submap_resources["cut stone"] = 0
 
 stockpile = {} --actual stockpile
-stockpile.wood = 1000
+stockpile.wood = 1000 * 100
 stockpile.food = 10000
-stockpile.gold = 1000
-stockpile.stone = 1000
+stockpile.gold = 1000 * 100
+stockpile.stone = 1000 * 100
 stockpile.security = 0
 stockpile.minerals = 1000
 stockpile.iron = 1000
@@ -70,10 +72,19 @@ outgoing.population = 0
 outgoing.lumber = 0
 outgoing["cut stone"] = 0
 
-map_size_y = 50
+map_size_y = 50 --written over be preStart()
 map_size_x = 50
 submap_size_y = 20
 submap_size_x = 20
+
+content = {}
+content.map = {}
+
+fixed_tiles = {} --for fixing the numbered tiles in the map generation.
+
+living_entities = {} --entities that pathfind
+global_id = 0
+
 
 --map_size_y = 80 --map size --WORKS
 --map_size_x = 80
@@ -85,296 +96,11 @@ function preStart() --initializes map, terminal size
 	local r,c = slang.dimensions()
 
 	map_size_y = r - 5
-	map_size_x = c - 30
+	map_size_x = c - 40
 end
 
+dofile("code/content.lua")
 
-data = {}
-data.maptiles = {}
-data.maptiles[1] = { --swamp
-name = "swamp",
-sym = "%",
-col = "brown"
-}
-data.maptiles[2] = { --forest
-["name"] = "forest",
-["sym"] = "#",
-["col"] = "green"
-}
-data.maptiles[3] = { --meadow
-["name"] = "meadow",
-["sym"] = ".",
-["col"] = "green"
-}
-data.maptiles[4] = { --barren
-["name"] = "barren",
-["sym"] = ",",
-["col"] = "gray"
-}
-data.maptiles[5] = { --mountain
-["name"] = "mountain",
-["sym"] = "^",
-["col"] = "gray",
-["good_for"] = "castle or quarry"
-}
-
-data.special = {} -- mineral deposits, bonuses, etc STARTS AT 1!!!
-
-data.special[1] = { 
-["name"] = "mineral deposit",
-["sym"] = "*",
-["col"] = "gray",
-["bonus"] = {minerals = 2},
-["desc"] = "2x mineral prod"
-}
-
-data.special[2] = {
-["name"] = "fertile",
-["sym"] = "*",
-["col"] = "gray",
-["bonus"] = {food = 2},
-["desc"] = "2x food prod"
-}
-
-data.special[3] = {
-["name"] = "infertile",
-["sym"] = "*",
-["col"] = "gray",
-["bonus"] = {food = 0.5},
-["desc"] = "50% food prod"
-}
-
-data.special[4] = {
-["name"] = "verdant valley",
-["sym"] = "*",
-["col"] = "gray",
-["bonus"] = {gold = 2},
-["desc"] = "2x gold"
-}
-
-data.special[5] = {
-["name"] = "defensible",
-["sym"] = "*",
-["col"] = "gray",
-["bonus"] = {security = 2},
-["desc"] = "2x security"
-}
-
-data.special[6] = {
-["name"] = "Lush",
-["sym"] = "*",
-["col"] = "gray",
-["bonus"] = {wood = 2},
-["desc"] = "2x wood"
-}
-
-
-
-data.buildable = {}
-data.buildable["Foresters Camp"] = {
-name = "Foresters Camp",
-desc="Generates some food and wood",
-sym = "F",
-col = "yellow",
-shortcut="F",
-want_civ = "is_civilization", --10 to any village, town, or city
-generates = { wood = 10,food = 10 },
-drains = { gold = 2 },
-requires_tile = "forest",
-tile_penalty = 0.25,
-cost = {wood = 0},
-kingdom_zoom = 1
-}
-
-data.buildable["Quarry"] = {
-name = "Quarry",
-desc="Generates some stone",
-sym = "Q",
-col = "yellow",
-shortcut="q",
-want_civ = "is_civilization", --10 to any village, town, or city
-generates = { stone = 10 },
-drains = { gold = 5 },
-requires_tile = "mountain",
-tile_penalty = 0.25,
-cost = { lumber = 100 },
-kingdom_zoom = 1
-}
-
-data.buildable["Mine"] = {
-name = "Mineral Mine",
-desc="Generates some minerals",
-sym = "M",
-col = "yellow",
-shortcut="m",
-want_civ = "is_civilization", --10 to any village, town, or city
-generates = { minerals = 10 },
-drains = { gold = 5 },
-requires_tile = "mountain",
-tile_penalty = 0.25,
-cost = { lumber = 100 },
-kingdom_zoom = 1
-}
-
-data.buildable["Sawmill"] = {
-name = "Lumber Mill",
-desc="turns wood into lumber",
-sym = "L",
-col = "blue",
-shortcut="L",
-want_civ = "is_civilization", --10 to any village, town, or city
-generates = { lumber = 10 },
-drains = { gold = 5, wood = 10 },
-cost = { wood = 100 },
-kingdom_zoom = 1
-}
-
-data.buildable["Stonecutter"] = {
-name = "Stone Cutter",
-desc="turns stone into cut stone",
-sym = "c",
-col = "white",
-shortcut="l",
-want_civ = "is_civilization", --10 to any village, town, or city
-generates = { ["cut stone"] = 10 },
-drains = { gold = 5, wood = 10 },
-cost = { wood = 100 },
-kingdom_zoom = 1
-}
-
-data.buildable["Farm"] = {
-name = "Farm",
-desc="Generates some food",
-sym = "f",
-col = "yellow",
-shortcut="f",
-requires_tile = "meadow",
-tile_penalty = 0.25,
-want_civ = "is_civilization",
-generates = { food = 50 },
-drains = { gold = 1 },
-cost = { wood = 100 },
-kingdom_zoom = 1
-}
-
-data.buildable["Smelter"] = {
-name = "Smelter",
-desc="A bloomery for production of iron",
-sym = "B",
-col = "blue",
-shortcut="x",
---requires_tile = "meadow",
---tile_penalty = 0.25,
-want_civ = "is_civilization",
-generates = { iron = 10 },
-drains = { gold = 1, minerals = 20 },
-cost = { lumber = 100 },
-kingdom_zoom = 1
-}
-
-data.buildable["Smithy"] = {
-name = "Smithy",
-desc="A smithy district with forges for turning iron into steel",
-sym = "S",
-col = 45,
-shortcut="s",
---requires_tile = "meadow",
---tile_penalty = 0.25,
-want_civ = "is_civilization" ,
-generates = { steel = 10 },
-drains = { gold = 1, minerals = 20 },
-cost = { lumber = 100 },
-kingdom_zoom = 1
-}
-
-
-data.buildable["Village"] = {
-name = "Village",
-desc="A small town center (tier 0)",
-sym = "V",
-col = "yellow",
-shortcut="v",
-is_civilization = true,
-drains = {food = 200, wood = 10 },
-generates = { gold = 100 },
-cost = { wood = 100, stone = 100, gold = 100},
-nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
-kingdom_zoom = 0
-}
-
-data.buildable["House"] = { --requires CIV!!!
-name = "House",
-desc="provides gold",
-sym = "+",
-col = "yellow",
-shortcut="h",
-want_civ = "is_market",
-generates = { gold = 5, population = 10 },
-drains = { food = 5 },
-cost = { wood = 10 },
-kingdom_zoom = 1
-}
-
-data.buildable["Stockpile"] = {
-name = "Stockpile",
-desc="place near farms, quarries, smelters, foresters, etc",
-sym = "X",
-col = "yellow",
-shortcut="B",
-is_civilization = true,
-cost = { wood = 10, stone = 10, gold = 10},
-drains = { gold = 2 },
-nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
-kingdom_zoom = 1
-}
-
-data.buildable["Market"] = {
-name = "Market",
-desc="place near houses",
-sym = "X",
-col = "yellow",
-shortcut="b",
-is_market = true,
-cost = { wood = 10, stone = 10, gold = 10},
-drains = { gold = 2 },
-nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
-kingdom_zoom = 1
-}
-
-
-
-data.buildable["Town"] = {
-name = "Town",
-desc="A medium size population center (tier 1)",
-sym = "X",
-col = 55, --yellow on blue background
-shortcut="x",
-is_civilization = true,
-drains = {food = 500, wood = 100 },
-generates = { gold = 100 },
-cost = { lumber = 1000, stone = 1000, gold = 1000},
-nearby_bonus = 2, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
-kingdom_zoom = 0
-}
-
-data.buildable["Castle"] = {
-name = "Castle",
-desc="A Castle",
-sym = "C",
-col = "yellow",
-shortcut="C",
-is_civilization = false,
-want_civ = true,
-drains = {food = 100, gold = 30,wood = 10},
-generates = { security = 12 },
-cost = { lumber = 300, wood = 100, stone = 1000, gold = 500},
-requires_tile = "mountain",
-tile_penalty = 0.5,
-kingdom_zoom = 0
-}
-
-content = {}
-content.map = {}
 
 function message(y,x,string)
 	print(string)
@@ -434,9 +160,27 @@ function set_inherit(a,b)
 	setmetatable(a,{["__index"] = b})
 end
 
+function fixTiles() --fixes the tile numbering problem with maptiles.  now maptiles key can be the word "swamp" instead of a number.
+	local num = 1 --start at 1
+
+	for k,v in pairs(data.maptiles) do --only used for map generation.
+		fixed_tiles[num] = v
+		
+		for k2,v2 in pairs(v) do
+		fixed_tiles[num][k2] = v2
+		end
+		
+		num = num + 1
+	end
+
+	--data.maptiles = fixed_tiles
+end --ends function
+
 function generateMap(mapy,mapx,villagey,villagex)
 
-local num_kinds = count_maptile_kinds()
+fixTiles()
+
+local num_kinds = count_maptile_kinds() --counts fixed_tiles
 local num_special = countEntries(data.special)
 for y=0 , mapy , 1 do
 for x=0 , mapx , 1 do
@@ -445,17 +189,17 @@ content.map[y][x] = content.map[y][x] or {}
 
 local r_num = math.random(1,num_kinds) --this table starts at one...
 
-content.map[y][x]["land_tile_kind"] = r_num
+--content.map[y][x]["land_tile_kind"] = r_num
 
 content.map[y][x]["tile"] = {}
 
-set_inherit(content.map[y][x]["tile"],data.maptiles[r_num])
+set_inherit(content.map[y][x]["tile"],fixed_tiles[r_num])
 
-copyObject(content.map[y][x]["tile"],data.maptiles[r_num])
+copyObject(content.map[y][x]["tile"],fixed_tiles[r_num])
 
 
 if math.random(1,20) == 1 then
-	local id = math.random(1,num_special) --this table starts at 0...
+	local id = math.random(1,num_special) --this table starts at 0... was 1
 	content.map[y][x]["special"] = {}
 	set_inherit(content.map[y][x]["special"],data.special[id])
 
@@ -484,11 +228,11 @@ content.map[y][x][y2][x2] = content.map[y][x][y2][x2] or {}
 content.map[y][x]["already_generated"] = true
 local spot = content.map[y][x][y2][x2]
 local r_num = math.random(1,num_kinds)
-spot["land_tile_kind"] = r_num
+--spot["land_tile_kind"] = r_num
 
 spot["tile"] = {}
-set_inherit(spot["tile"],data.maptiles[r_num])
-copyObject(spot["tile"],data.maptiles[r_num])
+set_inherit(spot["tile"],fixed_tiles[r_num])
+copyObject(spot["tile"],fixed_tiles[r_num])
 end end
 
 end
@@ -503,10 +247,10 @@ end
 function old_showMap(mapy,mapx)
 for y=0,mapy, 1 do
 for x=0,mapx, 1 do
-local tile = content.map[y][x]["land_tile_kind"]
+local tile = content.map[y][x]["tile"]
 slang.gotorc(y,x)
-setColor(data.maptiles[tile]["col"])
-slang.writestring(data.maptiles[tile]["sym"])
+setColor(tile["col"])
+slang.writestring(tile["sym"])
 
 
 end end
@@ -575,11 +319,14 @@ local x = 0
 for y=0,mapy,1 do
 for x=0,mapx,1 do
 
-local tile = map_data[y][x]["land_tile_kind"]
+--local tile = map_data[y][x]["land_tile_kind"]
+
+local tile = map_data[y][x]["tile"]
+
 if not tile then return end --sanity
 slang.gotorc(y,x)
-setColor(data.maptiles[tile]["col"])
-slang.writestring(data.maptiles[tile]["sym"])
+setColor(tile["col"])
+slang.writestring(tile["sym"])
 
 end end
 
@@ -613,16 +360,74 @@ for x=0,mapx, 1 do
 
 	if tile["player_building"] then
 		slang.gotorc(y,x)
-		setColor(tile["player_building"]["col"])
+		setColor(tile["player_building"]["use_col"] or tile["player_building"]["col"])
 		slang.writestring(tile["player_building"]["sym"])
 	end
 	
 end end --ends for loops
 end --ends function
 
+
+function specialdisplaymessage(message,y,x) --for getstring. old code.
+	if x == nil then x = 3 end
+
+
+	if y == nil then y = 0 end
+	slang.gotorc(y,x)
+	print("message ("..message..")  ")
+	slang.writestring(message.."                                                                                      ")
+	slang.refresh()
+	return
+end
+
+function getString(printonline) --gets a string of chars, prints them on the line specified on the screen.
+	local getkey = getKey
+	local inn = "x"
+	local bb = 1
+	local tableaa= {}
+	local str = ""
+	while(inn ~= [[ret]]) do
+		inn = getkey("any")
+		if inn ~= "ret" and inn ~= "bs" then
+			bb = bb+1
+			specialdisplaymessage(inn,printonline,bb)
+			tableaa[bb] = inn
+
+			end
+		if inn == "bs" then
+			specialdisplaymessage(" ",printonline,bb)
+			tableaa[bb] = nil
+			bb = bb -1
+			if bb < 1 then bb = 1 end
+			end
+	local checkstr = ""
+	for k,v in pairs(tableaa) do
+		if v ~= "ret" and v ~= "bs" then checkstr = checkstr..v end
+	end
+--	for k in pairs(list) do
+--		if list[k]["name"] == checkstr then funcs.displaymessage(printonline+1,1,"That might work.") break end
+--		if list[k]["name"] ~= checkstr then funcs.displaymessage(printonline+1,1,"That won't help.") end
+--	end
+	end --ends the do loop
+	for k,v in pairs(tableaa) do --not ipairs but seems to get them in the right order anyway.
+		if v ~= "ret" and v ~= "bs" then str = str..v end
+	end
+	print("string "..str)
+	return str 
+end
+
 function playerHasResources()
 return true
 end
+
+function createBuilding(kind,spoty,spotx)
+current_map[spoty][spotx]["player_building"] = {}
+copyObject(current_map[spoty][spotx]["player_building"],kind)
+current_map[spoty][spotx]["player_building"]["x"] = spotx
+current_map[spoty][spotx]["player_building"]["y"] = spoty
+end
+
+villages = {}
 
 function playerAddBuilding(kind,spoty,spotx)
 --try to pay
@@ -634,17 +439,51 @@ end
 
 for k,v in pairs(kind["cost"]) do --first, see if i have all ingredients.  For now, just spend it
 stockpile[k] = stockpile[k] - v
-end 
+end
+
+local name
+if kind["name"] == "Village" or kind["name"] == "Castle" then
+slang.gotorc(0,0)
+slang.writestring("Type name then press enter)")
+slang.refresh()
+name = getString(1)
+end
 
 current_map[spoty][spotx]["player_building"] = {}
 copyObject(current_map[spoty][spotx]["player_building"],kind)
-end
+current_map[spoty][spotx]["player_building"]["x"] = spotx
+current_map[spoty][spotx]["player_building"]["y"] = spoty
+if name then
+	current_map[spoty][spotx]["player_building"]["custom_name"] = name
+	end
+	
+	--if village, add to village list
+	
+	if kind["name"] == "Village" then
+	villages[global_id] = current_map[spoty][spotx]["player_building"]
+	global_id = global_id + 1
+	end
+	
+calculateSubmapStockpile("for_display") --turns buildings red if no road connection
+refresh_display()
+
+end --ends function
 
 function playerRemoveBuilding(spoty,spotx)
 if not current_map[spoty][spotx]["player_building"] then return end --no building to deconstruct.
-	for k,v in pairs(current_map[spoty][spotx]["player_building"]["cost"]) do
+	
+for k,v in pairs(current_map[spoty][spotx]["player_building"]["cost"]) do
 	stockpile[k] = stockpile[k] + v --reimburse materials
-	end
+end
+	
+	
+	--remove from village list
+if zoom_level == 0 then --main map
+		local build = current_map[spoty][spotx]["player_building"]
+		if build and build["name"] == "Village" then
+			villages[build["id"]] = nil
+		end
+end
 
  current_map[spoty][spotx]["player_building"] = nil
 end
@@ -655,7 +494,7 @@ local line_data = {}
 
 	local line = 0
 
-		for k,v in pairs(data.buildable) do
+		for k,v in pairs(data.buildable) do --populate line_data
 		local meant_for_zoom = data.buildable[k]["kingdom_zoom"]
 			if (not meant_for_zoom) or (meant_for_zoom and meant_for_zoom == zoom_level) then
 				--save the entry to the line data
@@ -670,7 +509,7 @@ local line_data = {}
 	
 	local key, b, x, y = getKey()
 	
-	if key == "mouse" then --mouse click, see if its on a menu entry
+	if key == "mouse" and b == 0 then --mouse click, see if its on a menu entry
 		for k,v in pairs(line_data) do --go over the lines, see which one matches the click
 			if k == y then --you clicked on a line
 			playerAddBuilding(line_data[k],spoty,spotx)
@@ -682,8 +521,17 @@ local line_data = {}
 		end
 	end
 	
+	if key == "mouse" and b == 2 then --right click, show data on the entity
+		for k,v in pairs(line_data) do
+			if k == y then
+				displayMenuInfo(line_data[k])
+			end
+		end
+	end
+		
 	if key == "e" then --pressed 'remove building'
 	playerRemoveBuilding(spoty,spotx)
+	calculateSubmapStockpile("for_display")
 	showMap()
 	showSpecial()
 	showBuildings()
@@ -759,7 +607,9 @@ local special_mod = 1
 
 if content.map[y][x]["player_building"] and content.map[y][x]["player_building"]["generates"] and
 content.map[y][x]["player_building"]["generates"]["security"] then
-	local on_tile = data.maptiles[ content.map[y][x]["land_tile_kind"] ] ["name"]
+local on_tile = my_tile["tile"]["name"]
+
+--	local on_tile = data.maptiles[ content.map[y][x]["land_tile_kind"] ] ["name"]
 	local want_tile = content.map[y][x]["player_building"]["requires_tile"]
 	if want_tile ~= on_tile then
 		modifier = content.map[y][x]["player_building"]["tile_penalty"] 
@@ -787,7 +637,22 @@ end
 
 end
 
-function calculateSubmapStockpile(command)
+function findTradingPost(y,x,map_data) --returns x and y of trading post
+for y3 = 0,submap_size_y,1 do
+for x3 = 0,submap_size_x,1 do
+
+if map_data[y3][x3]["player_building"] and map_data[y3][x3]["player_building"]["road_hub"] == true 
+ then return y3,x3,true end
+
+end
+end
+return -1,-1,false 
+end
+
+function calculateSubmapStockpile(command,y_spot,x_spot)
+
+local y_spot = map_pos_y
+local x_spot = map_pos_x
 
 for k,v in pairs(resources) do --reset incoming/outgoing
 current_submap_resources[k] = 0
@@ -795,7 +660,7 @@ current_submap_outgoing[k] = 0
 end
 
 --ADD resources to the display data from the village at the map point
-	local current_map_square = content.map[map_pos_y][map_pos_x]
+	local current_map_square = content.map[y_spot][x_spot]
 	if current_map_square["player_building"] and current_map_square["player_building"]["generates"] 
 	then
 			for k,v in pairs(current_map_square["player_building"]["generates"]) do
@@ -815,8 +680,6 @@ for y = 0,map_size_y,1 do
 for x = 0,map_size_x,1 do
 
 if content.map[y][x]["already_generated"] then --found a submap
-
-	
 
 
 for y2 = 0,submap_size_y,1 do --iterate over submap
@@ -842,6 +705,7 @@ penalty,near_bonus,effectiveness = stockpileDetailSubmap(y2,x2,content.map[y][x]
 
 local building = content.map[y][x][y2][x2]["player_building"]
 if building then --found a player building, calculate drains and generates
+		
 		building["adjusted_resources"] = {}
 		if building["generates"] then
 			for k,v in pairs(building["generates"]) do
@@ -851,9 +715,10 @@ if building then --found a player building, calculate drains and generates
 			
 		--	penalty,near_bonus,effectiveness = stockpileDetailSubmap(y2,x2,content.map[y][x])
 			
-		
-			--uses v:
-			local modifier = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
+			if effectiveness == 0 then building["use_col"] = 64 end --red color if no effectiveness, no effectiveness if no stockpile and trade hub.
+			if effectiveness ~= 0 then building["use_col"] = nil end
+			local modifier = ( v * effectiveness * penalty * near_bonus * special_bonus * (1.0 + security/100) )
+			
 			building["adjusted_resources"] = building["adjusted_resources"] or {} --for display only
 			local adj_ob = building["adjusted_resources"]
 			adj_ob[k] = adj_ob[k] or 0
@@ -865,7 +730,7 @@ if building then --found a player building, calculate drains and generates
 			
 			--only add for my x and y position on zoom 0 main map.
 			
-			if (y == player_y and x == player_x and zoom_level == 0) or (zoom_level == 1 and y == map_pos_y and x == map_pos_x) then
+			if (y == y_spot and x == x_spot and zoom_level == 0) or (zoom_level == 1 and y == map_pos_y and x == map_pos_x) then
 				current_submap_resources[k] = current_submap_resources[k] + modifier --just for display
 			end
 			
@@ -874,7 +739,7 @@ if building then --found a player building, calculate drains and generates
 		
 		if building["drains"] then --drain resources
 			for k3,v3 in pairs(building["drains"]) do
-			local add_amount = v3 * near_bonus
+			local add_amount = v3 * near_bonus * effectiveness
 				if command ~= "for_display" then
 					outgoing[k3] = outgoing[k3] or 0
 					outgoing[k3] = outgoing[k3] + (add_amount)
@@ -905,6 +770,27 @@ floorSubmapStockpile() --floors out the current_submap_resources display values
 
 end --ends function
 
+function checkPathToTradeHub(neary,nearx,map_data,y,x)
+local final_modifier = true
+
+		local found
+		local tradey
+		local tradex
+		tradey,tradex, found = findTradingPost(y,x,map_data) --find the trading post, 1 per submap
+		-- if found == true, trading post exists.. ok, pathfind to it
+		if found == false then final_modifier = false end --no trading post on map.
+		
+		if found == true then
+			local distances, foundit = funcs.astarpathfind(nearx,neary,tradex,tradey,nil,nil,"stay_on_road",map_data ) --tile is mapdata
+			--foundit is true on finding the destination.
+			if not foundit then --couldnt find a path on the road to target
+
+				final_modifier = false
+			end --no road connection, generate nothing.
+		
+		end
+return final_modifier end
+
 function finishStockpileCalc()
 
 for k,v in pairs(stockpile) do
@@ -927,24 +813,39 @@ local distance
 local nearx
 local neary
 
+local final_modifier = 1 -- stays 1 if there is a path to a trade hub.  stockpiles are treated as roads incidentally. see astar blockingpath function.
+
 if  map_data[y][x]["player_building"] and map_data[y][x]["player_building"]["requires_tile"] then
 		local want_tile = map_data[y][x]["player_building"]["requires_tile"]
-		local has_tile = data.maptiles[map_data[y][x]["land_tile_kind"] ] ["name"]
+		local has_tile = tile["tile"]["name"]
 		penalty = map_data[y][x]["player_building"]["tile_penalty"]
 		if want_tile == has_tile then penalty = 1 end --has wanted tile
 	end
 	
-	if map_data[y][x]["player_building"] and map_data[y][x]["player_building"]["want_civ"] then
-	local civ_kind  = map_data[y][x]["player_building"]["want_civ"]
+if map_data[y][x]["player_building"] and map_data[y][x]["player_building"]["want_civ"] then
+		
+		local civ_kind  = map_data[y][x]["player_building"]["want_civ"]
 		distance, neary,nearx = calc_distance_to_nearest(tile,y,x,map_data,submap_size_y,submap_size_x,civ_kind)
+	
 		if (nearx == 0 and neary == 0) or distance == 100000 then near_bonus = 0.1 else
+			near_bonus = map_data[neary][nearx]["player_building"]["nearby_bonus"]
+		end
+	
+	
+	if map_data[neary][nearx]["player_building"] and map_data[neary][nearx]["player_building"]["needs_roads"] then
 		
 		
-		near_bonus = map_data[neary][nearx]["player_building"]["nearby_bonus"] end
+	 --CHECK ROAD CONNECTIONS FOR "needs_roads" and 'road_hub' etc. 
+	 --check path to trading post on roads.  if it exists, allow resource generation.
+	local reached_dest = checkPathToTradeHub(neary,nearx,map_data,y,x)
+	if not reached_dest then final_modifier = 0 end
+	
+	end
 		
 		
-		effectiveness = 1 / distance
-		effectiveness = bounds(effectiveness,0,1);
+			effectiveness = (1- (distance/10)) * final_modifier 
+--		effectiveness = (1 / distance) * final_modifier --final modifier is 0 if no path to trade hub for 'needs roads' buildings.
+		effectiveness = bounds(effectiveness,0,1)
 		if distance >= 100000 then effectiveness = 0 end
 	end
 	
@@ -977,20 +878,21 @@ local effectiveness = 1 -- for want_civ
 local special_bonus = 1 -- for special map additions like fertile tiles.
 
 local distance, nearx,neary
+local tile = content.map[y][x]["tile"]
 	
 	if  content.map[y][x]["player_building"] and content.map[y][x]["player_building"]["requires_tile"] then
 		local want_tile = content.map[y][x]["player_building"]["requires_tile"]
-		local has_tile = data.maptiles[ content.map[y][x]["land_tile_kind"] ] ["name"]
+		local has_tile = tile["name"]
 		penalty = content.map[y][x]["player_building"]["tile_penalty"]
 		if want_tile == has_tile then penalty = 1 end --has wanted tile
 	end
 	
 	if content.map[y][x]["player_building"] and content.map[y][x]["player_building"]["want_civ"] then
-		distance, neary,nearx = calc_distance_to_nearest(tile,y,x,content.map,map_size_y,map_size_x)
+		distance, neary,nearx = calc_distance_to_nearest(tile,y,x,content.map,map_size_y,map_size_x,"is_civilization")
 		if nearx == 0 and neary == 0 and distance == 100000 then near_bonus = 1 else
-		
-		
+				
 		near_bonus = content.map[neary][nearx]["player_building"]["nearby_bonus"]
+		
 	    end
 		
 		
@@ -1004,7 +906,8 @@ local distance, nearx,neary
 if content.map[y][x]["player_building"] then --found a player building, calculate drains and generates
 
 
-	local building = content.map[y][x]["player_building"]
+local building = content.map[y][x]["player_building"]
+local amount_to_add
 
 if building["generates"] then
 for k,v in pairs(building["generates"]) do
@@ -1021,7 +924,7 @@ for k,v in pairs(building["generates"]) do
 	
 	--save the adjusted value in the building	
 	
-	local amount_to_add = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
+	amount_to_add = ( ((((v * effectiveness) * penalty) * near_bonus) * special_bonus) * (1.0 + security/100) )
 	
 	building["adjusted_resources"] = building["adjusted_resources"] or {} --for display only
 	local adj_ob = building["adjusted_resources"]
@@ -1039,7 +942,7 @@ end
 if building["drains"] then
 	for k,v in pairs(building["drains"]) do
 	outgoing[k] = outgoing[k] or 0
-	outgoing[k] = outgoing[k] + v
+	outgoing[k] = outgoing[k] + v --was v
 	end
 end
 
@@ -1056,9 +959,7 @@ end
 --distance of 5. pref distance of 10. result is 0.5
 --distance of 1, pref distance of 3, result is 1.0
 
-function showIncomes() --and stockpile
-local x
-local y
+function showIncomes(y,x) --and stockpile
 
 if not x then x = player_x end
 if not y then y = player_y end
@@ -1066,9 +967,14 @@ local line = 0
 --local y_loc = 81
 local x_loc = map_size_x + 1
 
+if not current_map[y] or not current_map[y][x] or not current_map[y][x]["tile"] then return end
+
+local on_tile_name=current_map[y][x]["tile"]["name"]
+local is_good_for = current_map[y][x]["tile"]["good_for"] or "no entry"
+
 --display tile info for standing on map
-local on_tile_name = data.maptiles[ content.map[player_y][player_x]["land_tile_kind"] ] ["name"]
-local is_good_for = data.maptiles[ content.map[player_y][player_x]["land_tile_kind"] ] ["good_for"] or "test"
+--local on_tile_name = data.maptiles[ content.map[player_y][player_x]["land_tile_kind"] ] ["name"]
+--local is_good_for = data.maptiles[ content.map[player_y][player_x]["land_tile_kind"] ] ["good_for"] or "test"
 
 slang.gotorc(line,x_loc)
 setColor("white")
@@ -1094,7 +1000,7 @@ end
 		
 		slang.gotorc(line,x_loc)
 		setColor("yellow")
-		slang.writestring("(+"..submap_production.." -"..submap_consumption..")".."(+"..math.floor(resources[k]).." -"..math.floor(outgoing[k]).. ") "..k.." "..v.."            ")
+		slang.writestring(k.." (+"..submap_production.." -"..submap_consumption..")".."(+"..math.floor(resources[k]).." -"..math.floor(outgoing[k]).. ") "..v.."            ")
 		line = line + 1;
 	end
 
@@ -1120,7 +1026,10 @@ local tile = current_map[y][x]["tile"]
  --no tile, skip
 print("erasing tile")
 slang.gotorc(y,x)
+
+
 setColor(tile["col"])
+
 slang.writechar(tile["sym"])
 
 local special_tile = current_map[y][x]["special"]
@@ -1134,7 +1043,7 @@ end
 local building = current_map[y][x]["player_building"]
 if building then
 slang.gotorc(y,x)
-setColor(building["col"])
+setColor(building["use_col"] or building["col"])
 slang.writechar(building["sym"])
 end
 
@@ -1221,28 +1130,41 @@ function printSlangLibraryNames()
 end
 
 
-function singleClick(y,x) --right single click
+function rightClickOnMap(y,x) --right single click
+map_pos_x = x
+map_pos_y = y
+
 displayEntityInfo(y,x)
+
+calculateSubmapStockpile("for_display",y,x)
+
+showIncomes(y,x)
+slang.refresh()
+getKey()
+refresh_display()
 end
 
-function displayInfoForOneEntity(k,v,line,building)
-setColor("white")
+function displayInfoForOneEntity(k,v,line,building) --displays the info on a right clicked menu or map item.
+
 if type(v) == "number" or type(v) == "string" then
 slang.gotorc(line,0)
-slang.writestring(k.." = "..v)
+slang.writestring(k.." = "..v.."     ")
 line = line + 1
 end
+
+
+
 if k == "generates" then
 	for k2, v2 in pairs (building["generates"]) do
 		slang.gotorc(line,0)
-		slang.writestring("Generates "..v2.." "..k2)
+		slang.writestring("Generates "..v2.." "..k2.."     ")
 		line = line + 1
 	end
 end
 if k == "drains" then
 	for k2,v2 in pairs(building["drains"]) do
 		slang.gotorc(line,0)
-		slang.writestring("Drains "..v2.." "..k2)
+		slang.writestring("Drains "..v2.." "..k2.."     ")
 		line = line + 1
 	end
 end
@@ -1250,15 +1172,40 @@ end
 if k == "adjusted_resources" then --building has adjusted resources.
 	for k2,v2 in pairs(building["adjusted_resources"]) do
 		slang.gotorc(line,0)
-		slang.writestring("Adjusted Income: "..v2.." "..k2)
+		slang.writestring("Adjusted Income: "..v2.." "..k2.."     ")
 		line = line + 1
 	end 
 end
+if k == "cost" then
+	for k2,v2 in pairs(building["cost"]) do
+	slang.gotorc(line,0)
+	slang.writestring("Build Cost: "..v2.." "..k2.."     ")
+	line = line + 1
+	end
+end
+
 
 return line
 end
 
+function displayMenuInfo(building) --for r-click on the menu building
+
+local line = 0
+if building then
+for k,v in pairs(building) do
+line = displayInfoForOneEntity(k,v,line,building)
+end
+end
+
+slang.refresh()
+getKey()
+refresh_display()
+
+end
+
+
 function displayEntityInfo(y,x)
+
 
 local line = 0
 local building = false
@@ -1288,9 +1235,13 @@ line = displayInfoForOneEntity(k,v,line,tile)
 end
 end
 
+
 slang.refresh()
-getKey()
-refresh_display()
+
+--local key,b,x2,y2 = getKey()
+--if key == "mouse" and b == 2 then return displayEntityInfo(y2,x2) end --RIGHT CLICK DISPLAYS NEXT POINT OF DATA
+
+
 
 
 end
@@ -1302,13 +1253,178 @@ showMap();
 showSpecial()
 showBuildings()
 showPlayer()
-calculateSubmapStockpile("for_display")
+calculateSubmapStockpile("for_display",player_y,player_x)
 showIncomes()
 slang.refresh()
 end
 
+data.pathFindEntities = {}
+data.pathFindEntities["nomad"] = {
+kind = "nomad",
+col = "white",
+sym = "N",
+native_zoom = 0
+--makes_paths = true,
+}
+data.pathFindEntities["trader"] = {
+kind = "trader",
+col = "red",
+sym = "T"
+
+}
+
+
+function spawn_nomad(y,x) --testing
+
+living_entities[global_id] = {}
+
+living_entities[global_id]["id"] = global_id
+living_entities[global_id]["x"] = x
+living_entities[global_id]["y"] = y
+
+copyObject(living_entities[global_id],data.pathFindEntities["nomad"])
+
+local nexty,nextx = selectRandom("is_civilization")
+
+living_entities[global_id]["target"] = {}
+living_entities[global_id]["target"]["x"] = nextx or 10
+living_entities[global_id]["target"]["y"] = nexty or 10
+
+
+living_entities[global_id]["zoom_level"] = zoom_level --which map am i on?
+
+global_id = global_id + 1
+
+end
+
+function spawn_pathfind_entity(y,x,kind)
+
+living_entities[global_id] = {}
+
+living_entities[global_id]["id"] = global_id
+living_entities[global_id]["x"] = x
+living_entities[global_id]["y"] = y
+
+copyObject(living_entities[global_id],data.pathFindEntities[kind])
+
+local nexty,nextx = selectRandom("is_civilization")
+
+living_entities[global_id]["target"] = {}
+living_entities[global_id]["target"]["x"] = nextx or 10
+living_entities[global_id]["target"]["y"] = nexty or 10
+
+global_id = global_id + 1
+
+end
+
+function selectRandom(match_key) --eg match_key = 'is_civilization' etc selects a random 'is civ' on the map.
+
+local entry = 0 --start at 1
+
+local listx = {}
+local listy = {}
+
+for k,v in pairs(villages) do
+	local build = villages[k]
+	if build and build[match_key] then --found a castle or village on main map, add to list.
+		entry = entry + 1
+		listx[entry] = build["x"]
+		listy[entry] = build["y"]
+		
+	end
+
+end
+	
+	
+
+--if entry == 1 then return 10,10 end --no villages
+
+--use list to make a random choice
+local choice = math.random(1,entry)
+--print("choice "..choice)
+--print("listx "..listx[choice])
+--print("listy "..listy[choice])
+
+return listy[choice], listx[choice] --y and x
+
+end
+
+function movePathfinders()
+--	local y2 = 20
+--	local x2 = 20 --pathfinding target, make getTarget() sometime
+	
+	
+local x2
+local y2
+	
+	local oldx
+	local oldy
+	
+	local x
+	local y
+	
+	for k,v in pairs(living_entities) do
+	
+	
+	
+		local ob = living_entities[k]
+		
+		
+		
+		x2 = ob["target"]["x"]
+		y2 = ob["target"]["y"]
+		
+		x = ob["x"]
+		y = ob["y"]
+
+		oldx = x
+		oldy = y
+		
+		made_move = funcs.moveEntityTowards(ob,x,y,x2,y2) --move one square towards x2,y2 with A*
+	
+	if ob["zoom_level"] == zoom_level then --if its on the same zoom level as me, erase and draw
+		--erase the enetity
+		
+		erasePlayer(oldy,oldx) --erase
+		
+		--draw the entity
+		slang.gotorc(living_entities[k]["y"],living_entities[k]["x"]) --draw
+		setColor(living_entities[k]["col"])
+		slang.writechar(living_entities[k]["sym"])
+	end
+		
+		local newx = ob["x"]
+		local newy = ob["y"]
+		
+		
+		
+		--if i didnt move
+		if oldx == newx and oldy == newy then --nomad arrived at destination
+			ob.distances = nil
+			--select a new target village
+			 local nexty,nextx = selectRandom("is_civilization")
+			 ob["target"]["x"] = nextx
+			 ob["target"]["y"] = nexty
+		end --true, i reached my destination
+		 
+		 
+
+		
+	end
+	
+	slang.refresh()
+ 
+
+end
+
+
 
 function main()
+
+movePathfinders() 
+
+
+
 local key
 local x
 local y
@@ -1317,8 +1433,7 @@ local mbutton
 key, mbutton, x, y = getKey();
 
 if key == "b" then player_build(player_y,player_x) end
-
-
+if key == "S" then spawn_nomad(player_y,player_x) end
 
 if key == "w" then playerMove(-1,0) end
 if key == "a" then playerMove(0,-1) end
@@ -1342,13 +1457,13 @@ if key == "z" then playerZoom(player_y,player_x,content.map[player_y][player_x])
 	if key == "mouse" and  mbutton == 2 then --right button, display entity info (buildings, tiles)
 	--single click r click
 
-	singleClick(y,x);
+	rightClickOnMap(y,x);
 --	elseif key == "mouse" and last_mouse == "mouse" and (last_mouse_x == x and last_mouse_y == y) then --double click
 	elseif key == "mouse" and mbutton == 0 then --left click bring up build menu
 --	key = "blank"
 	slang.gotorc(y,x)
 	slang.writestring("?")
-	player_build(y,x)
+	player_build(y,x) --open the build menu on left click
 	
 	--slang.gotorc(y,x)
 --	slang.writestring("Mouse!")
@@ -1377,7 +1492,7 @@ if day == 7 then
 	--calculateIncomes() --incomes and adds to stockpile
 
 	calculateStockpile()
-	calculateSubmapStockpile()
+	calculateSubmapStockpile("",player_y,player_x)
 	finishStockpileCalc()
 	day = 0
 end
