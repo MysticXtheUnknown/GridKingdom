@@ -463,8 +463,17 @@ if name then
 	villages[global_id] = current_map[spoty][spotx]["player_building"]
 	global_id = global_id + 1
 	end
-	
+--[[
+if zoom_level == 0 then
+resetSubmapStockpile()
 calculateSubmapStockpile("for_display") --turns buildings red if no road connection
+end
+
+if zoom_level == 1 then
+resetSubmapStockpile()
+calcOneSubmapStockpile(map_pos_y,map_pos_x)
+end
+--]]
 refresh_display()
 
 end --ends function
@@ -513,7 +522,7 @@ local line_data = {}
 		for k,v in pairs(line_data) do --go over the lines, see which one matches the click
 			if k == y then --you clicked on a line
 			playerAddBuilding(line_data[k],spoty,spotx)
-			refresh_display()
+		--	refresh_display()
 			
 			return
 			
@@ -531,6 +540,7 @@ local line_data = {}
 		
 	if key == "e" then --pressed 'remove building'
 	playerRemoveBuilding(spoty,spotx)
+	resetSubmapStockpile()
 	calculateSubmapStockpile("for_display")
 	showMap()
 	showSpecial()
@@ -541,7 +551,7 @@ local line_data = {}
 	for k,v in pairs(data.buildable) do --build a building key
 		if data.buildable[k]["shortcut"] == key and ( not data.buildable.kingdom_zoom or (data.buildable.kingdom_zoom == zoom_level )) then
 			playerAddBuilding(data.buildable[k],spoty,spotx)
-			refresh_display()
+		--	refresh_display()
 			return
 		end
 	end
@@ -635,6 +645,10 @@ for k,v in pairs(current_submap_resources) do
 current_submap_resources[k] = math.floor(v)
 end
 
+for k,v in pairs(current_submap_outgoing) do
+current_submap_outgoing[k] = math.floor(v)
+end
+
 end
 
 function findTradingPost(y,x,map_data) --returns x and y of trading post
@@ -649,18 +663,10 @@ end
 return -1,-1,false 
 end
 
-function calculateSubmapStockpile(command,y_spot,x_spot)
-
-local y_spot = map_pos_y
-local x_spot = map_pos_x
-
-for k,v in pairs(resources) do --reset incoming/outgoing
-current_submap_resources[k] = 0
-current_submap_outgoing[k] = 0 
-end
+function calcOneSubmapStockpile(y,x,command)
 
 --ADD resources to the display data from the village at the map point
-	local current_map_square = content.map[y_spot][x_spot]
+	local current_map_square = content.map[map_pos_y][map_pos_x]
 	if current_map_square["player_building"] and current_map_square["player_building"]["generates"] 
 	then
 			for k,v in pairs(current_map_square["player_building"]["generates"]) do
@@ -673,14 +679,6 @@ end
 			
 			
 	end
-
---start iteration over the map
-
-for y = 0,map_size_y,1 do
-for x = 0,map_size_x,1 do
-
-if content.map[y][x]["already_generated"] then --found a submap
-
 
 for y2 = 0,submap_size_y,1 do --iterate over submap
 for x2 = 0,submap_size_x,1 do
@@ -758,13 +756,56 @@ if building then --found a player building, calculate drains and generates
 
 
 end end --ends inner loop
+ 
+ floorSubmapStockpile()
 
-end --ends if 'alraedy generated' 
+end --end function
+
+function resetSubmapStockpile()
+
+for k,v in pairs(resources) do --reset incoming/outgoing
+current_submap_resources[k] = 0
+current_submap_outgoing[k] = 0 
+end
+
+end
+
+
+function calculateSubmapStockpile(command,y_spot,x_spot)
+
+local y_spot = map_pos_y
+local x_spot = map_pos_x
+
+for k,v in pairs(resources) do --reset incoming/outgoing
+current_submap_resources[k] = 0
+current_submap_outgoing[k] = 0 
+end
+
+--ADD resources to the display data from the village at the map point
+	local current_map_square = content.map[y_spot][x_spot]
+	if current_map_square["player_building"] and current_map_square["player_building"]["generates"] 
+	then
+			for k,v in pairs(current_map_square["player_building"]["generates"]) do
+			--	current_submap_resources[k] = current_submap_resources[k] or 0
+				current_submap_resources[k] = current_submap_resources[k] + v
+			end
+			for k,v in pairs(current_map_square["player_building"]["drains"]) do
+				current_submap_outgoing[k] = current_submap_outgoing[k] + v
+			end
+			
+			
+	end
+
+--start iteration over the map
+
+for y = 0,map_size_y,1 do
+for x = 0,map_size_x,1 do
+
+if content.map[y][x]["already_generated"] then --found a submap
+
+calcOneSubmapStockpile(y,x) end 
 
 end end --ends the iteration over the map
-
-
-
 
 floorSubmapStockpile() --floors out the current_submap_resources display values
 
@@ -1136,12 +1177,12 @@ map_pos_y = y
 
 displayEntityInfo(y,x)
 
-calculateSubmapStockpile("for_display",y,x)
-
-showIncomes(y,x)
+--calcOneSubmapStockpile(y,x)
+refresh_display()
+--showIncomes(y,x)
 slang.refresh()
 getKey()
-refresh_display()
+--refresh_display()
 end
 
 function displayInfoForOneEntity(k,v,line,building) --displays the info on a right clicked menu or map item.
@@ -1251,9 +1292,20 @@ function refresh_display()
 --slang.clear()
 showMap();
 showSpecial()
+
+if zoom_level == 0 then
+resetSubmapStockpile()
+calculateSubmapStockpile("for_display",player_y,player_x)
+end
+if zoom_level == 1 then
+resetSubmapStockpile()
+calcOneSubmapStockpile(map_pos_y,map_pos_x,"for_display")
+end
+
 showBuildings()
 showPlayer()
-calculateSubmapStockpile("for_display",player_y,player_x)
+
+
 showIncomes()
 slang.refresh()
 end
@@ -1485,21 +1537,36 @@ end
 --showSpecial(map_size_y,map_size_x)
 --showPlayer()
 
-
-
 --calculate incomes once every seven days
-if day == 7 then
+
 	--calculateIncomes() --incomes and adds to stockpile
-
+if day == 7 then
 	calculateStockpile()
-	calculateSubmapStockpile("",player_y,player_x)
-	finishStockpileCalc()
 	day = 0
+	
+	if zoom_level == 0 then
+		resetSubmapStockpile()
+		calculateSubmapStockpile() -- each day
+	end
+
+	if zoom_level == 1 then
+		resetSubmapStockpile()
+		calcOneSubmapStockpile(map_pos_y,map_pos_x)
+	end
+--	resetSubmapStockpile()
+--	resetSubmapStockpile()
+--	calculateSubmapStockpile("",player_y,player_x)
+	finishStockpileCalc()
+	
+	
 end
+	day = day + 1
 
-day = day + 1
 
-calculateSubmapStockpile("for_display") -- each day
+
+--day = day + 1
+
+
 
 showIncomes() --show incomes and stockpile
 
