@@ -235,8 +235,8 @@ sym = "V",
 col = "yellow",
 shortcut="v",
 is_civilization = true,
-drains = {food = 200, wood = 10 },
-generates = { gold = 10 },
+--drains = {food = 200, wood = 10 },
+--generates = { gold = 10 },
 cost = { wood = 100, stone = 100, gold = 100},
 nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
 kingdom_zoom = 0,
@@ -278,7 +278,11 @@ col = "red",
 shortcut="H",
 road_hub = true,
 cost = { wood = 0 },
-drains = { gold = 0 },
+--generates = { gold = 10 },
+drains = {food = 200, wood = 10 },
+generates = { gold = 10 },
+--cost = { wood = 100, stone = 100, gold = 100},
+--drains = { gold = 0 },
 nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
 kingdom_zoom = 1
 }
