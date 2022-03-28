@@ -1,16 +1,22 @@
+
+WELCOME TO: GRID KINGDOM !!
+Where efficiency is beauty.
+
 To run the game, run gk_bat.bat
 
 its a batch file that runs the provided slang.exe using the game's lua code.
 
-You can change your terminal size by right clicking the window > click properties > layout tab.
+You can change your terminal size by right clicking the window > click properties > layout tab. then restart the app.
 
-You can use the mouse to build buildings.  To enable, run the game.  Right click the terminal.  Click properties, and DISABLE QuickEdit mode (checkbox).  Clicking on the map in-game should bring up the build menu.
+You can use the mouse to build buildings.  To enable, run the game.  Right click the terminal.  Click properties, and DISABLE QuickEdit mode (checkbox).  Clicking on the map in-game should bring up the build menu.  right clicking should bring up entity information, including in-menu.
 
 Current Version:
-0.0.1
+0.0.1.1.
 Features:
 Build 10 different buildings
 basic economy is set up
+use roads to connect your marketplaces and stockpiles to the trade hub.
+buildings with red background are not producing.  Houses need a nearby market.  Industries need a nearby stockpile. if the stockpile is far away from the industry, that can lower production.
 
 Moddable.
 
@@ -20,3 +26,5 @@ It's an economy game, so buildings drain resources as well as produce them.  pre
 houses need to be near markets,
 most industry needs to be near a stockpile.
 the farther away they are, the less goods they produce and consume.
+
+foresters guild produce the most on forest squares, mines and quarries on mountains, etc.
