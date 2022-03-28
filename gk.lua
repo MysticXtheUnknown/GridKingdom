@@ -62,7 +62,7 @@ stockpile.steel = 0
 stockpile.population = 0
 stockpile.lumber = 0
 stockpile.lumber = 1000 --DEBUG
-stockpile["cut stone"] = 0
+stockpile["cut stone"] = 0 + 10000 --debug
 
 outgoing = {} --outgoing
 outgoing.food = 0
@@ -453,7 +453,15 @@ function playerAddBuilding(kind,spoty,spotx)
 if not current_map[spoty][spotx] then return end --outside of map
 
 for k,v in pairs(kind["cost"]) do --check if i have enough resources in my stockpile.
-if stockpile[k] < v and v ~= 0 then return end --0 cost, dont care.
+if stockpile[k] < v and v ~= 0 then 
+
+refresh_display()
+
+slang.gotorc(0,1)
+slang.writestring("not enough materials")
+slang.refresh()
+
+return end --0 cost, dont care.
 end
 
 for k,v in pairs(kind["cost"]) do --first, see if i have all ingredients.  For now, just spend it
@@ -522,20 +530,32 @@ end
 
 function player_build(spoty,spotx)
 
+local needs_castle = false
+
+if content.map[map_pos_y][map_pos_x]["player_building"] and content.map[map_pos_y][map_pos_x]["player_building"]["can_build_castle_items"] then needs_castle = true end
+
 local line_data = {}
 
 	local line = 0
 
 		for k,v in pairs(data.buildable) do --populate line_data
 		local meant_for_zoom = data.buildable[k]["kingdom_zoom"]
+
 			if (not meant_for_zoom) or (meant_for_zoom and meant_for_zoom == zoom_level) then
+			
+			
+			if (needs_castle and data.buildable[k]["castle_buildable"]) or (not needs_castle and not data.buildable[k]["castle_buildable"])
+			or (meant_for_zoom == zoom_level and data.buildable[k]["castle_buildable"])
+			 then
 				--save the entry to the line data
 				line_data[line] = data.buildable[k]
+				setColor("white")
 				message(line,0,data.buildable[k]["shortcut"]..") "..data.buildable[k]["name"])
 				line = line+1
 			else
 			--does nothing
 			end
+			end --ends if needs_castle
 		end 
 	
 	
@@ -563,17 +583,17 @@ local line_data = {}
 		
 	if key == "e" then --pressed 'remove building'
 	playerRemoveBuilding(spoty,spotx)
-	resetSubmapStockpile()
-	calculateSubmapStockpile("for_display")
+--	resetSubmapStockpile()
+--	calculateSubmapStockpile(nil,nil,"for_display")
 	showMap()
 	showSpecial()
 	showBuildings()
 	return
 	end
 	
-	for k,v in pairs(data.buildable) do --build a building key
-		if data.buildable[k]["shortcut"] == key and ( not data.buildable.kingdom_zoom or (data.buildable.kingdom_zoom == zoom_level )) then
-			playerAddBuilding(data.buildable[k],spoty,spotx)
+	for k,v in pairs(line_data) do --build a building key
+		if line_data[k]["shortcut"] == key and ( not data.buildable.kingdom_zoom or (data.buildable.kingdom_zoom == zoom_level )) then
+			playerAddBuilding(line_data[k],spoty,spotx)
 		--	refresh_display()
 			return
 		end
@@ -1146,7 +1166,7 @@ function playerZoom(y,x,map_data)
 
 if zoom_level == 0 
 and content.map[y][x]["player_building"]
-and content.map[y][x]["player_building"]["is_civilization"]
+and content.map[y][x]["player_building"]["is_zoomable"]
 then
 map_pos_x = x
 map_pos_y = y
@@ -1207,6 +1227,7 @@ map_pos_y = y
 
 displayEntityInfo(y,x)
 getKey()
+slang.clear()
 --calcOneSubmapStockpile(y,x)
 refresh_display()
 --showIncomes(y,x)
@@ -1322,17 +1343,6 @@ function refresh_display()
 --slang.clear()
 showMap()
 showSpecial()
---[[
-if zoom_level == 0 then
-resetSubmapStockpile()
-calculateSubmapStockpile(player_y,player_x,"for_display")
-end
-if zoom_level == 1 then
-resetSubmapStockpile()
-calcOneSubmapStockpile(map_pos_y,map_pos_x,"for_display")
-end
-
---]]
 
 showBuildings()
 showPlayer()
@@ -1424,6 +1434,8 @@ end
 --if entry == 1 then return 10,10 end --no villages
 
 --use list to make a random choice
+if entry == 0 then return 10,10 end --no villages
+
 local choice = math.random(1,entry)
 --print("choice "..choice)
 --print("listx "..listx[choice])
