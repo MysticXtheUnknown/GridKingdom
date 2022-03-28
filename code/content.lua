@@ -80,6 +80,26 @@ data.special[6] = {
 
 
 data.buildable = {}
+
+
+
+
+
+data.buildable["Castle Wall"] = {
+name = "City Wall",
+sym = "#",
+col = 12, --12 is light red pink?
+kingdom_zoom = 0,
+path_cost = 1000, --will jump walls sometimes?
+shortcut = "w",
+kingdom_zoom = 1,
+only_castles = true,
+castle_buildable = true,
+cost = {wood = 0}
+}
+
+
+
 data.buildable["Foresters Camp"] = {
 name = "Foresters Camp",
 desc="Generates some food and wood",
@@ -99,7 +119,7 @@ data.buildable["Road"] = {
 name = "Road",
 sym = "r",
 col = 3, --3 is light blue
-kingdom_zoom = 0,
+--kingdom_zoom = 0,
 path_cost = 0.1,
 shortcut = "r",
 is_road = true,
@@ -123,6 +143,7 @@ col = 12, --12 is light red pink?
 kingdom_zoom = 0,
 path_cost = 1000, --will jump walls sometimes?
 shortcut = "w",
+kingdom_zoom = 1,
 cost = {wood = 0}
 }
 
@@ -234,7 +255,7 @@ desc="A small town center (tier 0)",
 sym = "V",
 col = "yellow",
 shortcut="v",
-is_civilization = true,
+is_zoomable = true,
 --drains = {food = 200, wood = 10 },
 --generates = { gold = 10 },
 cost = { wood = 100, stone = 100, gold = 100},
@@ -256,7 +277,7 @@ cost = { wood = 10 },
 kingdom_zoom = 1
 }
 
-data.buildable["Stockpile"] = {
+data.buildable["Stockpile"] = { --castles, villages
 name = "Stockpile",
 desc="place near farms, quarries, smelters, foresters, etc",
 sym = "X",
@@ -267,7 +288,8 @@ needs_roads = true,
 cost = { wood = 10, stone = 10, gold = 10},
 drains = { gold = 2 },
 nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
-kingdom_zoom = 1
+kingdom_zoom = 1,
+castle_buildable = true
 }
 
 data.buildable["Trading Hub"] = {
@@ -284,7 +306,25 @@ generates = { gold = 10 },
 --cost = { wood = 100, stone = 100, gold = 100},
 --drains = { gold = 0 },
 nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
-kingdom_zoom = 1
+kingdom_zoom = 1,
+}
+
+data.buildable["Castle Trading Hub"] = {
+name = "Castle Trading Hub",
+desc="connect with roads to markets and stockpiles, otherwise, the nearby industries generate nothing.",
+sym = "H",
+col = "red",
+shortcut="H",
+road_hub = true,
+cost = { wood = 0 },
+--generates = { gold = 10 },
+drains = {food = 100, gold = 30,wood = 10},
+generates = { security = 12 },
+--cost = { wood = 100, stone = 100, gold = 100},
+--drains = { gold = 0 },
+--nearby_bonus = 1, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
+--kingdom_zoom = 1,
+castle_buildable = true,
 }
 
 data.buildable["Market"] = {
@@ -302,7 +342,7 @@ kingdom_zoom = 1
 }
 
 
-
+--[[
 data.buildable["Town"] = {
 name = "Town",
 desc="A medium size population center (tier 1)",
@@ -316,20 +356,35 @@ cost = { lumber = 1000, stone = 1000, gold = 1000},
 nearby_bonus = 2, --1.0 * production of nearby buildings. stat increases on bigger cities. other building must have 'want civ'
 kingdom_zoom = 0
 }
-
+--]]
 data.buildable["Castle"] = {
 name = "Castle",
 desc="A Castle",
 sym = "C",
 col = "yellow",
 shortcut="C",
-is_civilization = false,
-want_civ = "is_civilization",
-drains = {food = 100, gold = 30,wood = 10},
-generates = { security = 12 },
+is_zoomable = true,
+--want_civ = "is_civilization",
+--drains = {food = 100, gold = 30,wood = 10},
+--generates = { security = 12 },
 cost = { lumber = 300, wood = 100, stone = 1000, gold = 500},
-requires_tile = "mountain",
-tile_penalty = 0.5,
-kingdom_zoom = 0
+--requires_tile = "mountain",
+--tile_penalty = 0.5,
+kingdom_zoom = 0,
+can_build_castle_items = true
 }
 
+data.buildable["Keep"] = {
+name = "Keep",
+desc="A Main Keep within a castle",
+sym = "C",
+col = "yellow",
+shortcut="K",
+drains = {food = 100, gold = 30,wood = 10},
+generates = { security = 12 },
+cost = { lumber = 300, wood = 100, ["cut stone"] = 1000, gold = 500},
+requires_tile = "mountain",
+tile_penalty = 0.5,
+kingdom_zoom = 1,
+castle_buildable = true
+}
